@@ -1,0 +1,44 @@
+<html ng-app="xtag">
+
+<head>
+    <link rel="stylesheet" type="text/css" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/css/bootstrap-theme.min.css">
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/angular.js"></script>
+    <script src="/js/angular-route.min.js"></script>
+    <script src="/js/ui-bootstrap-tpls.min.js"></script>
+    <script src="/js/xtag.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar navbar-inverse navbar-default">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="/">XTag</a>
+                </div>
+
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="#"><i class="fa fa-home"></i> Home</a>
+                    </li>
+                    <li><a href="#about"><i class="fa fa-shield"></i> About</a>
+                    </li>
+                    <li><a href="#contact"><i class="fa fa-comment"></i> Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- MAIN CONTENT AND INJECTED VIEWS -->
+    <div id="main">
+        <div ng-view></div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="text-center">
+    </footer>
+</body>
+
+</html>
