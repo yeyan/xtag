@@ -24,7 +24,11 @@ import           Control.Monad
 import           Control.Monad.IO.Class       (liftIO)
 import           Control.Monad.Logger
 import           Control.Monad.Trans.Resource
+import           Data.Conduit
+import qualified Data.Conduit.List            as CL
+import qualified Data.Text                    as T
 import           Database.Persist
+import           Database.Persist.Sql
 import           Database.Persist.Sqlite      (runMigrationSilent, runSqlConn,
                                                withSqliteConn)
 import           Model.Type
@@ -77,8 +81,8 @@ createBook dir = do
 
 listBooks limit index = do
     total <- count [BookPageCount >=. 0]
-    books <- selectList [] [LimitTo limit, OffsetBy $ (index -2) * limit]
-    let maxPage = (ceiling $ fromIntegral total/fromIntegral limit) + 1
+    books <- selectList [] [LimitTo limit, OffsetBy $ (index - 1) * limit]
+    let maxPage = (ceiling $ fromIntegral total/fromIntegral limit)
     return $ BookList index maxPage books
 
 toBookId :: Integral n => n -> BookId
@@ -91,7 +95,38 @@ getPage bookId index = do
     selectFirst [PageBookId ==. (toBookId bookId), PageIndex ==. index] []
 
 scanDirectory dir = do
-    bookDirs <- liftIO $ findLeafDirectories dir
-    mapM_ createBook bookDirs
+    path <- liftIO $ canonicalizePath dir
+    dirs <- liftIO $ findLeafDirectories path
+    mapM_ createBook dirs
+    deleteInvalidBooks path dirs
 
 initDB = runMigrationSilent migrateAll
+
+runTest query = do
+    withSqliteConn "xtag.db3" $ \conn -> do
+        runResourceT $ runStdoutLoggingT $ runSqlConn query conn
+
+--deleteInvalidBooks :: MonadSqlPersist m => String -> [String] -> m ()
+deleteInvalidBooks dir bookDirs = do
+    rawExecute createTable []
+    rawExecute emptyTable []
+    forM_ bookDirs $ \dir -> do
+        let value = PersistText $ T.pack dir
+        rawExecute "insert into directory values (null, ?)" [value]
+    let like = PersistText $ T.pack $ dir ++ "%"
+    bookIds <- rawQuery selectInvalidBook [like] $= CL.map (Key . head) $$ CL.consume
+    forM_ bookIds $ \bookId -> do
+        delete bookId
+        deleteWhere [PageBookId ==. bookId]
+    where
+        createTable =
+            "create temp table if not exists directory (id integer auto increment, path text not null)"
+        emptyTable =
+            "delete from directory"
+        selectInvalidBook =
+            "select id from book where path like ? and path not in (select path from directory)"
+
+testScanDir =
+    runTest $ do
+        initDB
+        scanDirectory "data"

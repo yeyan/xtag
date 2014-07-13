@@ -1,0 +1,13 @@
+<div class="container">
+    <div class="row" ng-repeat="row in matrix">
+        <div class="col-md-3" ng-repeat="book in row">
+            <img class="img-thumbnail" alt="cover" ng-src="" ng-click="viewPage(book)">
+            </img>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <pagination total-items="maxPage()" ng-model="bookList.index" max-size="'10'" class="pagination-sm" boundary-links="true" rotate="false" ng-change="loadPage()"></pagination>
+        </div>
+    </div>
+</div>

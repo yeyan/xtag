@@ -1,6 +1,6 @@
 var app = angular.module('xtag', ['ngRoute', 'ui.bootstrap']);
 
-app.factory('bookService', ["$http",
+app.factory('backend', ["$http",
     function($http) {
         return {
             getBookList: function(page) {
@@ -21,7 +21,6 @@ app.factory('bookService', ["$http",
                     url: '/api/page/' + book + '/' + page
                 });
             },
-            currentBook: function() {}
         };
     }
 ]);
@@ -36,12 +35,9 @@ app.config(['$routeProvider',
             templateUrl: 'pages/bookList.html',
             controller: 'mainCtrl',
             resolve: {
-                bookList: ['$route', 'bookService',
-                    function($route, bookService) {
-                        return bookService.getBookList($route.current.params.page)
-                            .success(function(data) {
-                                return data;
-                            });
+                bookList: ['$route', 'backend',
+                    function($route, backend) {
+                        return backend.getBookList($route.current.params.page)
                     }
                 ]
             }
@@ -50,8 +46,8 @@ app.config(['$routeProvider',
             templateUrl: 'pages/page.html',
             controller: 'pageCtrl',
             resolve: {
-                book: function($route, bookService) {
-                    return bookService.getBook($route.current.params.bookId)
+                book: function($route, backend) {
+                    return backend.getBook($route.current.params.bookId)
                         .success(function(data) {
 
                             data.id = $route.current.params.bookId;
@@ -116,7 +112,7 @@ app.controller('pageCtrl', ['$scope', '$timeout', 'book',
         }
 
         $scope.maxPage = function() {
-            return $scope.book.count * 10;
+            return $scope.book.total * 10;
         }
 
         $scope.pageChanged = function() {
@@ -124,14 +120,13 @@ app.controller('pageCtrl', ['$scope', '$timeout', 'book',
             var element = $(selector);
             if (element.length) {
                 window.scrollTo(0, element[0].offsetTop - 100);
-                enable_scroll();
             }
         }
 
         function deltaPage(delta) {
             var page = $scope.book.page + delta;
             if (page < 1) page = 1;
-            if (page > $scope.book.count) page = $scope.book.count;
+            if (page > $scope.book.total) page = $scope.book.total;
 
             $scope.book.page = page;
 
@@ -140,7 +135,7 @@ app.controller('pageCtrl', ['$scope', '$timeout', 'book',
 
 
         var onKeyDown = function(e) {
-            console.log(e);
+            //console.log(e);
 
             $scope.$apply(function() {
                 var delta = 0;
@@ -163,10 +158,20 @@ app.controller('pageCtrl', ['$scope', '$timeout', 'book',
             });
         }
 
-        //document.addEventListener("keydown", onKeyDown, false);
+        var onMouseClick = function(e) {
+            $scope.$apply(function() {
+                var middle = $(this).innerWidth() / 2;
+                var delta = 1;
+
+                if (e.offsetX < middle) {
+                    delta = -1;
+                }
+                deltaPage(delta);
+            });
+        }
 
         $('html').on('keydown', onKeyDown);
-
+        $('img').on('click', onMouseClick);
     }
 ]);
 

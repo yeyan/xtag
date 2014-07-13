@@ -1,22 +1,22 @@
- <div class="container">
+<div class="container">
     <div class="page-header" id="banner">
         <div class="text-center">
             <h4>{{book.name}}</h4>
         </div>
     </div>
     <div class="row">
-        <div class="col-md-1"></div>
-        <div class="col-md-10">
-            <img scroll-bookmark="page" class="img-responsive block-center" ng-src="{{currentPage()}}">
-            <div class="row">
-                <div class="col-md-6"></div>
-                <div class="col-md-6"></div>
-            </div>
+        <div class="col-md-offset-1 col-md-10">
+            <img scroll-bookmark='page' 
+                class="img-responsive block-center" ng-src="{{currentPage()}}">
             </img>
         </div>
-        <div class="col-md-1"></div>
     </div>
-    <div id="pagination" class="row">
+    <div class="row">
+        <div class="col-md-offset-5 col-md-2 label label-info">
+            <span>{{book.page}}/{{book.total}}</span>
+        </div>
+    </div>
+    <div class="row">
         <div class="col-md-12 text-center">
             <pagination total-items="maxPage()" ng-model="book.page" max-size="'10'" class="pagination-sm" boundary-links="true" rotate="false" ng-change="pageChanged()"></pagination>
         </div>

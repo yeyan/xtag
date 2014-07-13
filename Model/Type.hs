@@ -30,22 +30,23 @@ Page
 |]
 
 data BookList = BookList
-    { index :: Int
-    , total :: Int
-    , books :: [Entity Book]
+    { bookListIndex :: Int
+    , bookListTotal :: Int
+    , bookListBooks :: [Entity Book]
     }
+    deriving (Show)
 
 instance ToJSON Book where
     toJSON (Book name _ count) = object
         [ "name" .= name
-        , "count" .= count
+        , "total" .= count
         ]
 
 instance ToJSON (Entity Book) where
     toJSON (Entity uid (Book name _ count)) = object
         [ "id" .= uid
         , "name" .= name
-        , "count" .= count
+        , "total" .= count
         ]
 
 instance ToJSON BookList where
