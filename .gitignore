@@ -1,4 +1,10 @@
 *.o
 *.hi
 *.db3
+*.swap
 data*
+cache*
+bower_components*
+.ghci*
+.dir-locals.el
+main

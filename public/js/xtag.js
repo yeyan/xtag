@@ -6,7 +6,10 @@ app.factory('backend', ["$http",
             getBookList: function(page) {
                 return $http({
                     method: 'GET',
-                    url: '/api/list/' + page
+                    url: '/api/book/index',
+                    params: {
+                        page: page
+                    }
                 })
             },
             getBook: function(book) {
@@ -18,7 +21,7 @@ app.factory('backend', ["$http",
             getPage: function(book, page) {
                 return $http({
                     method: 'GET',
-                    url: '/api/page/' + book + '/' + page
+                    url: '/api/book/' + book + '/page/' + page
                 });
             },
         };
@@ -35,7 +38,7 @@ app.config(['$routeProvider',
             templateUrl: 'pages/bookList.html',
             controller: 'mainCtrl',
             resolve: {
-                bookList: ['$route', 'backend',
+                response: ['$route', 'backend',
                     function($route, backend) {
                         return backend.getBookList($route.current.params.page)
                     }
@@ -50,6 +53,8 @@ app.config(['$routeProvider',
                     return backend.getBook($route.current.params.bookId)
                         .success(function(data) {
 
+                            console.log(data);
+
                             data.id = $route.current.params.bookId;
                             data.page = 1;
 
@@ -62,11 +67,11 @@ app.config(['$routeProvider',
     }
 ]);
 
-app.controller('mainCtrl', ['$scope', '$location', 'bookList',
-    function($scope, $location, bookList) {
+app.controller('mainCtrl', ['$scope', '$location', 'response',
+    function($scope, $location, response) {
         console.log("mainCtrl active");
 
-        $scope.bookList = bookList.data;
+        $scope.bookList = response.data;
         $scope.matrix = [];
 
         var index = 0;
@@ -85,7 +90,7 @@ app.controller('mainCtrl', ['$scope', '$location', 'bookList',
         $scope.matrix.push(currentRow);
 
         $scope.bookCover = function(book) {
-            return '/api/book/' + book.id + '/1';
+            return '/api/book/' + book.id + '/page/1/thumb';
         }
 
         $scope.viewPage = function(book) {
@@ -108,7 +113,7 @@ app.controller('pageCtrl', ['$scope', '$timeout', 'book',
         $scope.book = book.data;
 
         $scope.currentPage = function() {
-            return "/api/book/" + $scope.book.id + "/" + $scope.book.page;
+            return "/api/book/" + $scope.book.id + "/page/" + $scope.book.page + "/content";
         }
 
         $scope.maxPage = function() {

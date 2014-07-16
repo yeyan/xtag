@@ -27,6 +27,12 @@ Page
     bookId BookId
     UniquePagePath path
     deriving Show
+Thumbnail
+    index Int
+    path String
+    bookId BookId
+    UniquePreviewPath path
+    deriving Show
 |]
 
 data BookList = BookList

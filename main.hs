@@ -14,6 +14,7 @@ import           Text.Read                            (readMaybe)
 import           Database.Persist.Sqlite              hiding (get)
 
 import           Model.Book
+import           Network.HTTP.Types
 import           Network.Wai.Middleware.RequestLogger
 import           Network.Wai.Middleware.Static
 import           Web.Scotty.Trans
@@ -48,31 +49,49 @@ app = do
     get "/" $ do
         redirect "/index.html"
 
-    get "/api/list/:page" $ do
-        index <- parse "page"
+    get "/api/book/index" $ do
+        index <- pageP :: DBActionM Int
         bookList <- runDB $ listBooks 16 index
         json $ bookList
 
     get "/api/book/:book" $ do
-        bookId <- parse "book"
+        bookId <- bookIdP
         book <- runDB $ getBook bookId
         case book of
-            Nothing -> raise "404"
             Just vl -> json vl
+            Nothing -> resp404
 
-    get "/api/book/:book/:page" $ do
-        book <- parse "book"
-        page <- parse "page"
-        info <- runDB $ getPage book page
-        case info of
-            Just entity -> file $ pagePath $ entityVal entity
-            Nothing -> raise "404"
+    get "/api/book/:book/page/:page/thumb" $ do
+        book <- bookIdP
+        page <- pageIndexP
+        maybePath <- runDB $ getThumbnail "cache" book page
+        case maybePath of
+            Just path -> file path
+            Nothing -> resp404
+
+    get "/api/book/:book/page/:page/content" $ do
+        book <- bookIdP
+        page <- pageIndexP
+        maybePath <- runDB $ getPage book page
+        case maybePath of
+            Just path -> file path
+            Nothing -> resp404
+
     where
         parse name = do
             value <- liftM readMaybe $ param name
             case value of
                 Nothing -> raise $ T.concat ["Can't parse param ", name]
                 Just vl -> return vl
+        pageP =
+            param "page" `rescue` \_ -> return 1
+
+        bookIdP = param "book"
+        pageIndexP = param "page"
+
+        resp404 = do
+            status status404
+            text "Resource not found"
 
 main = do
     withSqlitePool "xtag.db3" 10 $ \pool -> do
