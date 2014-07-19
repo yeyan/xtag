@@ -1,24 +1,24 @@
 <div class="container">
     <div class="page-header" id="banner">
         <div class="text-center">
-            <h4>{{book.name}}</h4>
+            <h4>{{name}}</h4>
         </div>
     </div>
     <div class="row">
         <div class="col-md-offset-1 col-md-10">
             <img scroll-bookmark='page' 
-                class="img-responsive block-center" ng-src="{{currentPage()}}">
+                class="img-responsive block-center" ng-src="{{view()}}">
             </img>
         </div>
     </div>
     <div class="row">
         <div class="col-md-offset-5 col-md-2 label label-info">
-            <span>{{book.page}}/{{book.total}}</span>
+            <span>{{index}}/{{total}}</span>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12 text-center">
-            <pagination total-items="maxPage()" ng-model="book.page" max-size="'10'" class="pagination-sm" boundary-links="true" rotate="false" ng-change="pageChanged()"></pagination>
+            <pagination total-items="total * 10" ng-model="index" max-size="'10'" class="pagination-sm" boundary-links="true" rotate="false" ng-change="onPageChange()"></pagination>
         </div>
     </div>
 </div>

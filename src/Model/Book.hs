@@ -116,17 +116,20 @@ getBookIndex limit page = do
 getPage bookId pageId =
     lIndex (toAttrId bookId "pages") $ pageId - 1
 
-getThumbnail bookId pageId = do
-    eThumb <- getAttr bookId "thumbnail"
+getThumbnail bookId pageNumber = do
+    eThumb <- hGet thumbId pageId --getAttr bookId "thumbnail"
     if isJust eThumb
         then return eThumb
         else newThumbnail
     where
         newThumbnail = do
-            page <- getPage bookId pageId
+            page <- getPage bookId pageNumber
             case page of
                 Nothing -> return Nothing
                 Just vl -> do
                     thumb <- liftIO $ createThumbnail "../cache" vl 200 200
-                    setAttr bookId "thumbnail" thumb
+                    --setAttr bookId "thumbnail" thumb
+                    hSet thumbId pageId thumb
                     return $ Just thumb
+        thumbId = toAttrId bookId "thumbnail"
+        pageId  = C.fromString $ show pageNumber

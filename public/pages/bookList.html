@@ -1,24 +1,13 @@
 <div class="container">
-    <!--
-    <div class="row" ng-repeat="book in bookList.books">
-        <div class="page-header">
-            <h4>{{book.name}}</h4>
-        </div>
-        <div class="col-md-4">
-            <img class="img-thumbnail" alt="cover" ng-src="{{bookCover(book)}}" ng-click="viewPage(book)">
-            </img>
-        </div>
-    </div>
-    -->
-    <div class="row" ng-repeat="row in matrix">
-        <div class="col-md-3" ng-repeat="book in row">
-            <img class="img-thumbnail" alt="cover" ng-src="{{bookCover(book)}}" ng-click="viewPage(book)">
+    <div class="row" ng-repeat="row in items">
+        <div class="col-md-3" ng-repeat="item in row">
+            <img class="img-thumbnail" alt="cover" ng-src="{{preview(item)}}" ng-click="onSelect(item)">
             </img>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12 text-center">
-            <pagination total-items="maxPage()" ng-model="bookList.index" max-size="'10'" class="pagination-sm" boundary-links="true" rotate="false" ng-change="loadPage()"></pagination>
+            <pagination total-items="total" ng-model="index" max-size="'10'" class="pagination-sm" boundary-links="true" rotate="false" ng-change="onPageChange()"></pagination>
         </div>
     </div>
 </div>

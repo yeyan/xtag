@@ -32,11 +32,11 @@ app.config(['$routeProvider',
     function($routeProvider) {
         $routeProvider.
         when('/', {
-            redirectTo: "/list/1"
+            redirectTo: "/index/1"
         }).
-        when('/list/:page', {
+        when('/index/:page', {
             templateUrl: 'pages/bookList.html',
-            controller: 'mainCtrl',
+            controller: 'bookIndexCtrl',
             resolve: {
                 response: ['$route', 'backend',
                     function($route, backend) {
@@ -45,20 +45,45 @@ app.config(['$routeProvider',
                 ]
             }
         }).
-        when('/page/:bookId', {
+        when('/book/:book/:page', {
+            templateUrl: 'pages/pageList.html',
+            controller: 'bookCtrl',
+            resolve: {
+                response: ['$route', 'backend',
+                    function($route, backend) {
+                        return backend.getBook($route.current.params.book)
+                            .success(function(data) {
+
+                                var total = data.total;
+                                var limit = 24;
+
+                                data.total = Math.ceil(total / limit);
+                                data.index = _.min([_.max([$route.current.params.page, 1]),
+                                    data.total
+                                ]);
+
+                                data.items = _.range((data.index - 1) * limit + 1,
+                                    _.min([data.index * limit, total]) + 1);
+
+                                data.totalItems = total;
+
+                                //console.log(data);
+
+                                return data;
+                            });
+                    }
+                ]
+            }
+        }).
+        when('/page/:book/:page', {
             templateUrl: 'pages/page.html',
             controller: 'pageCtrl',
             resolve: {
-                book: function($route, backend) {
-                    return backend.getBook($route.current.params.bookId)
+                response: function($route, backend) {
+                    return backend.getBook($route.current.params.book)
                         .success(function(data) {
-
-                            console.log(data);
-
-                            data.id = $route.current.params.bookId;
-                            data.page = 1;
-
-                            console.log(data);
+                            data.index = $route.current.params.page;
+                            //console.log(data);
                             return data;
                         });
                 }
@@ -70,134 +95,128 @@ app.config(['$routeProvider',
 var toMatrix = function(data, width) {
     var matrix = [];
 
-    var index = 0;
-    var currentRow = [];
-
-    angular.forEach($scope.bookList.books, function(book) {
-        index = (index + 1) % 4;
-        currentRow.push(book);
-
-        if (index == 0) {
-            $scope.matrix.push(currentRow);
-            currentRow = [];
+    (function build(data) {
+        if (_.size(data) > 0) {
+            matrix.push(_.take(data, width));
+            build(_.drop(data, width));
         }
-    });
+    })(data);
+
+    return matrix;
 }
 
-app.controller('mainCtrl', ['$scope', '$location', 'response',
+var deltaPage = function(index, delta, total) {
+    return _.max([1, _.min([parseInt(index) + delta, total])]);
+}
+
+app.controller('bookIndexCtrl', ['$scope', '$location', 'response',
     function($scope, $location, response) {
-        console.log("mainCtrl active");
+        console.log('bookIndex active');
 
-        $scope.bookList = response.data;
-        $scope.matrix = [];
+        $scope.cols = $scope.cols || 4;
 
-        var index = 0;
-        var currentRow = [];
+        $scope.items = toMatrix(response.data.items, $scope.cols);
+        $scope.index = response.data.index;
+        $scope.total = response.data.total * 10;
 
-        angular.forEach($scope.bookList.books, function(book) {
-            index = (index + 1) % 4;
-            currentRow.push(book);
+        $scope.preview = function(item) {
+            return '/api/book/' + item.id + '/page/1/thumb';
+        }
 
-            if (index == 0) {
-                $scope.matrix.push(currentRow);
-                currentRow = [];
-            }
+        $scope.onSelect = function(item) {
+            $location.path("/book/" + item.id + "/1");
+        }
+
+        $scope.onPageChange = function() {
+            $location.path("/index/" + $scope.index);
+        }
+
+        $scope.$on("navPage", function(element, delta) {
+            $scope.index = deltaPage($scope.index, delta, $scope.total);
+            $scope.onPageChange();
+        });
+    }
+]);
+
+app.controller('bookCtrl', ['$controller', '$scope', '$location', 'response',
+    function($controller, $scope, $location, response) {
+        console.log('pageIndex active');
+
+        $scope.cols = 6;
+        $controller('bookIndexCtrl', {
+            $scope: $scope,
+            $location: $location,
+            response: response
         });
 
-        console.log($scope.matrix);
+        $scope.name = response.data.name;
+        $scope.totalItems = response.data.totalItems;
 
-        $scope.matrix.push(currentRow);
-
-        $scope.bookCover = function(book) {
-            return '/api/book/' + book.id + '/page/1/thumb';
+        $scope.preview = function(item) {
+            return '/api/book/' + response.data.id + '/page/' + item + '/thumb';
         }
 
-        $scope.viewPage = function(book) {
-            $location.path("/page/" + book.id);
+        $scope.onPageChange = function() {
+            $location.path("/book/" + response.data.id + "/" + $scope.index);
         }
 
-        $scope.maxPage = function() {
-            return $scope.bookList.total * 10;
-        }
-
-        $scope.loadPage = function() {
-            $location.path("/list/" + $scope.bookList.index);
+        $scope.onSelect = function(item) {
+            $location.path("/page/" + response.data.id + "/" + item);
         }
     }
 ]);
 
-app.controller('pageCtrl', ['$scope', '$timeout', 'book',
-    function($scope, $timeout, book) {
-        console.log("pageCtrl active");
-        $scope.book = book.data;
+app.controller('pageCtrl', ['$scope', '$location', 'response',
+    function($scope, $location, response) {
+        $scope.name = response.data.name;
+        $scope.index = response.data.index;
+        $scope.total = response.data.total;
 
-        $scope.currentPage = function() {
-            return "/api/book/" + $scope.book.id + "/page/" + $scope.book.page + "/content";
+        $scope.view = function() {
+            return '/api/book/' + response.data.id + '/page/' + $scope.index + '/content';
         }
 
-        $scope.maxPage = function() {
-            return $scope.book.total * 10;
+        $scope.onPageChange = function() {
+            window.scrollTo(0, angular.element("[scroll-bookmark='page']").offsetTop);
         }
 
-        $scope.pageChanged = function() {
-            var selector = "[scroll-bookmark='page']";
-            var element = $(selector);
-            if (element.length) {
-                window.scrollTo(0, element[0].offsetTop - 100);
-            }
-        }
-
-        function deltaPage(delta) {
-            var page = $scope.book.page + delta;
-            if (page < 1) page = 1;
-            if (page > $scope.book.total) page = $scope.book.total;
-
-            $scope.book.page = page;
-
-            if (delta != 0) $scope.pageChanged();
-        }
-
-
-        var onKeyDown = function(e) {
-            //console.log(e);
-
-            $scope.$apply(function() {
-                var delta = 0;
-
-                switch (e.keyCode) {
-                    case 39:
-                        delta = e.shiftKey ? 10 : 1;
-                        break;
-                    case 37:
-                        delta = e.shiftKey ? -10 : -1;
-                        break;
-                    case 32:
-                        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-                            delta = 1;
-                            e.preventDefault();
-                        }
-                }
-
-                deltaPage(delta);
-            });
-        }
-
-        var onMouseClick = function(e) {
-            $scope.$apply(function() {
-                var middle = $(this).innerWidth() / 2;
-                var delta = 1;
-
-                if (e.offsetX < middle) {
-                    delta = -1;
-                }
-                deltaPage(delta);
-            });
-        }
-
-        $('html').on('keydown', onKeyDown);
-        $('img').on('click', onMouseClick);
+        $scope.$on("navPage", function(element, delta) {
+            $scope.index = deltaPage($scope.index, delta, $scope.total);
+            $scope.onPageChange();
+        });
     }
 ]);
+
+$(function() {
+
+    function onKeyDown(e) {
+        var delta = 0;
+
+        switch (e.keyCode) {
+            case 39:
+                delta = e.shiftKey ? 10 : 1;
+                break;
+            case 37:
+                delta = e.shiftKey ? -10 : -1;
+                break;
+            case 32:
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+                    delta = 1;
+                    e.preventDefault();
+                }
+        }
+
+        if (delta != 0) {
+            var scope = angular.element(document).scope();
+
+            scope.$apply(function() {
+                scope.$broadcast("navPage", delta);
+            });
+        }
+    }
+
+    $(document).on('keydown', onKeyDown);
+});
 
 app.controller('navCtrl', function() {
     $scope.isActive = function(viewLocation) {
