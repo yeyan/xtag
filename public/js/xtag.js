@@ -87,6 +87,8 @@ app.controller('mainCtrl', ['$scope', '$location', 'response',
             }
         });
 
+        console.log($scope.matrix);
+
         $scope.matrix.push(currentRow);
 
         $scope.bookCover = function(book) {
