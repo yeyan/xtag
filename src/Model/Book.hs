@@ -27,54 +27,36 @@ import           Data.Maybe
 import           Data.UUID
 import           System.UUID.V4
 
-import qualified Data.ByteString.Char8  as C
+import qualified Data.ByteString.Char8  as CC
+import qualified Data.ByteString.UTF8   as C
 import qualified Data.Pool              as P
 import           Database.Redis.Simple
 
-import           Data.Aeson
-
-import           System.Directory
-import           System.Process
-
-listDirectory d = do
-    isDir <- doesDirectoryExist d
-    if isDir
-        then do
-            map toSub <$> filter noHidden <$> getDirectoryContents d
-        else
-            return []
-    where
-        noHidden f = head f /= '.'
-        toSub f = d ++ "/" ++ f
-
-findLeafDirectories d = do
-    isDir <- doesDirectoryExist d
-    if isDir
-        then do
-            fs <- listDirectory d
-            leafs <- concat <$> mapM findLeafDirectories fs
-            if null leafs
-                then return [d]
-                else return leafs
-        else
-            return []
+import           Model.Type
+import           Model.Util
 
 runTest action = do
     conn <- connect defaultConnectInfo
     r <- runRedis conn action
     print r
 
--- book operations
+testScanBook =
+    runTest $ do
+        liftIO $ print "A"
+        scanBooks "../data"
+        liftIO $ print "B"
+        books <- getBookIndex 0 10
+        liftIO $ print "C"
 
 newId name = do
-    uuid' <- C.pack <$> show <$> uuid
-    return $ C.concat [name , ":", uuid']
+    uuid' <- C.fromString <$> show <$> uuid
+    return $ CC.concat [name , ":", uuid']
 
 bookIndex = "book:index"
-bookPath = "book:path"
+bookPath  = "book:path"
 
 toAttrId id name =
-    C.concat [id, ":", name]
+    CC.concat [id, ":", name]
 
 setAttr id name value =
     set (toAttrId id name) value
@@ -82,38 +64,9 @@ setAttr id name value =
 getAttr id name =
     get $ toAttrId id name
 
-type BookId = C.ByteString
-
-data Book = Book
-    { bookId        :: C.ByteString
-    , bookName      :: C.ByteString
-    , bookPageCount :: Integer
-    }
-    deriving Show
-
-data BookIndex = BookIndex
-    { index :: Integer
-    , total :: Integer
-    , books :: [Book]
-    }
-    deriving (Show)
-
-instance ToJSON C.ByteString where
-    toJSON str =
-        toJSON $ C.unpack str
-
-instance ToJSON Book where
-    toJSON (Book id name total) =
-        object ["id" .= id, "name" .= name, "total" .= total]
-
-instance ToJSON BookIndex where
-    toJSON (BookIndex index total books) =
-        object ["index" .= index, "total" .= total, "books" .= books]
-
 createBook path = do
     (nId, name, path, pages) <- prepare path
     eId <- hGet bookPath path
-    -- liftIO $ print $ C.unpack $ "scanning " `C.append` path
     if isJust eId
         then return $ fromJust eId
         else insert nId name path pages
@@ -132,8 +85,8 @@ createBook path = do
                 path <- canonicalizePath p
                 name <- return $ reverse . takeWhile (\x -> x /= '/') . reverse $ p
                 bkid <- newId "book"
-                pags <- listDirectory path
-                return (bkid, C.pack name,C.pack path, map C.pack pags)
+                pags <- filter isImage <$> listDirectory path
+                return (bkid, C.fromString name,C.fromString path, map C.fromString pags)
 
 scanBooks path = do
     bookPaths <- liftIO $ findLeafDirectories path
@@ -145,25 +98,20 @@ getBook bookId = do
     return $ Book <$> Just bookId <*> name <*> Just pageCount
 
 getBookIndex limit page = do
-    let start = limit * page
-        stop  = limit * (page + 1) - 1
+    let start = limit * (page - 1)
+        stop  = limit * page - 1
     indexes <- lRange bookIndex start stop
     total   <- lLen bookIndex
     books   <- mapM getBook indexes
-    let total' = ceiling $ fromIntegral total / fromIntegral page
+    let total' = ceiling $ fromIntegral total / fromIntegral limit
         books' = catMaybes books
+    liftIO $ print total
+    liftIO $ print limit
+    liftIO $ print total'
     return $ BookIndex page total' books'
 
 getPage bookId pageId =
     lIndex (toAttrId bookId "pages") $ pageId - 1
-
-testScanBook =
-    runTest $ do
-        liftIO $ print "A"
-        scanBooks "../data"
-        liftIO $ print "B"
-        books <- getBookIndex 0 10
-        liftIO $ print "C"
 
 getThumbnail bookId pageId = do
     eThumb <- getAttr bookId "thumbnail"
@@ -176,17 +124,6 @@ getThumbnail bookId pageId = do
             case page of
                 Nothing -> return Nothing
                 Just vl -> do
-                    thumb <- liftIO $ createThumbnail "../cache" vl
+                    thumb <- liftIO $ createThumbnail "../cache" vl 200 200
                     setAttr bookId "thumbnail" thumb
                     return $ Just thumb
-
-createThumbnail dir path= do
-    thumb <- (\x y -> x ++ "/" ++ y ++ ".jpg")
-        <$> canonicalizePath (C.unpack dir)<*> liftA show uuid
-    --rawSystem "convert" [pagePath, "-thumbnail", "200x200", thumbnailPath]
-    (_, _, _, hProc) <- createProcess
-        (proc "./convert" [(C.unpack path), "-thumbnail", "200x200", thumb])
-    waitForProcess hProc
-    return $ C.pack thumb
-
-close conn = void $ runRedis conn quit
