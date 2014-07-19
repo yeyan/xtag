@@ -31,7 +31,8 @@ runScotty port pool = scottyT port initApp runM
 
         initApp m = runM $ do
             conn <- ask
-            liftIO $ runRedis conn $ scanBooks "../data"
+            rslt <- liftIO $ runRedis conn $ scanBooks "../data"
+            liftIO $ print rslt
             m
 
 runDB :: Redis a -> XTagActionM a

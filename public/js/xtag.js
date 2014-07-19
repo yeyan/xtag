@@ -67,6 +67,23 @@ app.config(['$routeProvider',
     }
 ]);
 
+var toMatrix = function(data, width) {
+    var matrix = [];
+
+    var index = 0;
+    var currentRow = [];
+
+    angular.forEach($scope.bookList.books, function(book) {
+        index = (index + 1) % 4;
+        currentRow.push(book);
+
+        if (index == 0) {
+            $scope.matrix.push(currentRow);
+            currentRow = [];
+        }
+    });
+}
+
 app.controller('mainCtrl', ['$scope', '$location', 'response',
     function($scope, $location, response) {
         console.log("mainCtrl active");

@@ -68,8 +68,11 @@ createBook path = do
     (nId, name, path, pages) <- prepare path
     eId <- hGet bookPath path
     if isJust eId
-        then return $ fromJust eId
-        else insert nId name path pages
+        then return eId
+        else do
+            if null pages
+                then return Nothing
+                else Just <$> insert nId name path pages
     where
         insert id name path pages = do
             setAttr id "name" name
