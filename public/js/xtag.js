@@ -177,7 +177,9 @@ app.controller('pageCtrl', ['$scope', '$location', 'response',
         }
 
         $scope.onPageChange = function() {
-            window.scrollTo(0, angular.element("[scroll-bookmark='page']").offsetTop);
+            if ($scope.index != $scope.total) {
+                window.scrollTo(0, angular.element("[scroll-bookmark='page']").offsetTop);
+            }
         }
 
         $scope.$on("navPage", function(element, delta) {

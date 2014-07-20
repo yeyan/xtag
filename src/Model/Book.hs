@@ -65,11 +65,12 @@ getAttr id name =
     get $ toAttrId id name
 
 createBook path = do
-    (nId, name, path, pages) <- prepare path
-    eId <- hGet bookPath path
+    path <- liftIO $ C.fromString <$> canonicalizePath path
+    eId  <- hGet bookPath path
     if isJust eId
         then return eId
         else do
+            (nId, name, pages) <- prepare $ C.toString path
             if null pages
                 then return Nothing
                 else Just <$> insert nId name path pages
@@ -85,11 +86,10 @@ createBook path = do
             return id
         prepare p =
             liftIO $ do
-                path <- canonicalizePath p
                 name <- return $ reverse . takeWhile (\x -> x /= '/') . reverse $ p
                 bkid <- newId "book"
                 pags <- filter isImage <$> listDirectory path
-                return (bkid, C.fromString name,C.fromString path, map C.fromString pags)
+                return (bkid, C.fromString name, map C.fromString pags)
 
 scanBooks path = do
     bookPaths <- liftIO $ findLeafDirectories path
@@ -108,9 +108,6 @@ getBookIndex limit page = do
     books   <- mapM getBook indexes
     let total' = ceiling $ fromIntegral total / fromIntegral limit
         books' = catMaybes books
-    liftIO $ print total
-    liftIO $ print limit
-    liftIO $ print total'
     return $ BookIndex page total' books'
 
 getPage bookId pageId =
