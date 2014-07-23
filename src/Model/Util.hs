@@ -42,9 +42,7 @@ toBook (path, pages) = do
     if null pages
         then return Nothing
         else return $ Just
-            (C.fromString name, C.fromString path, map C.fromString pages)
-    where
-        name = reverse $ takeWhile (\x -> x /= '/') $ reverse path
+            (C.fromString path, map C.fromString pages)
 
 findBooks dir = do
     dir <- liftIO $ canonicalizePath dir

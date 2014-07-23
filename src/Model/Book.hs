@@ -64,7 +64,7 @@ setAttr id name value =
 getAttr id name =
     get $ toAttrId id name
 
-createBook (name, path, pages) = do
+createBook (path, pages) = do
     eId  <- hGet bookPath path
     if isJust eId
         then return eId
@@ -81,6 +81,8 @@ createBook (name, path, pages) = do
             -- register path to book path
             hSet bookPath path id
             return id
+        name = C.fromString $ reverse $
+            takeWhile (\x -> x /= '/') $ reverse $ C.toString path
 
 scanBooks path = do
     books <- findBooks path
