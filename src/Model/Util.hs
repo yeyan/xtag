@@ -1,44 +1,54 @@
 module Model.Util
-    ( listDirectory
-    , findLeafDirectories
-    , createThumbnail
-    , isImage
-    , extension
-    , module System.Directory
+    ( createThumbnail
+    , findBooks
     ) where
 
 import           Control.Applicative
-
-import           System.Directory
-import           System.Process
-
-import qualified Data.ByteString.UTF8 as C
+import           Control.Monad
+import           Control.Monad.IO.Class
 import           Data.Char
+import           Data.Maybe
+import           System.Directory
+
+import qualified Data.ByteString.UTF8   as C
 import           Data.UUID
+import           System.Process
 import           System.UUID.V4
 
-listDirectory d = do
-    isDir <- doesDirectoryExist d
+findLeafDirectories dir = do
+    isDir <- liftIO $ doesDirectoryExist dir
     if isDir
         then do
-            map toSub <$> filter noHidden <$> getDirectoryContents d
-        else
-            return []
-    where
-        noHidden f = head f /= '.'
-        toSub f = d ++ "/" ++ f
-
-findLeafDirectories d = do
-    isDir <- doesDirectoryExist d
-    if isDir
-        then do
-            fs <- listDirectory d
-            leafs <- concat <$> mapM findLeafDirectories fs
+            contents <- liftIO $ transform <$> getDirectoryContents dir
+            leafs <- concat <$> mapM findLeafDirectories contents
             if null leafs
-                then return [d]
+                then return [(dir, contents)]
                 else return leafs
         else
             return []
+    where
+        transform = map subpath . filter noDot
+        noDot x = head x /= '.'
+        subpath x = concat [dir, "/", x]
+
+isImage p =
+    return $ extension p `elem` ["jpg", "png", "jpeg"]
+    where
+        extension =
+            map toLower . reverse . takeWhile (\x -> x /= '.') . reverse
+
+toBook (path, pages) = do
+    pages <- filterM isImage pages
+    if null pages
+        then return Nothing
+        else return $ Just
+            (C.fromString name, C.fromString path, map C.fromString pages)
+    where
+        name = reverse $ takeWhile (\x -> x /= '/') $ reverse path
+
+findBooks dir = do
+    dir <- liftIO $ canonicalizePath dir
+    catMaybes <$> (findLeafDirectories dir >>= mapM toBook)
 
 createThumbnail dir path width height = do
     thumb <- (\x y -> x ++ "/" ++ y ++ ".jpg")
@@ -48,7 +58,3 @@ createThumbnail dir path width height = do
         (proc "./convert" [(C.toString path), "-thumbnail", size, thumb])
     waitForProcess hProc
     return $ C.fromString thumb
-
-isImage p = extension p `elem` ["jpg", "jpeg", "png"]
-
-extension = map toLower . reverse . takeWhile (\x -> x /= '.') . reverse

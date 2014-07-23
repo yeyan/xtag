@@ -64,16 +64,13 @@ setAttr id name value =
 getAttr id name =
     get $ toAttrId id name
 
-createBook path = do
-    path <- liftIO $ C.fromString <$> canonicalizePath path
+createBook (name, path, pages) = do
     eId  <- hGet bookPath path
     if isJust eId
         then return eId
         else do
-            (nId, name, pages) <- prepare $ C.toString path
-            if null pages
-                then return Nothing
-                else Just <$> insert nId name path pages
+            nId <- liftIO $ newId "book"
+            Just <$> insert nId name path pages
     where
         insert id name path pages = do
             setAttr id "name" name
@@ -84,16 +81,10 @@ createBook path = do
             -- register path to book path
             hSet bookPath path id
             return id
-        prepare p =
-            liftIO $ do
-                name <- return $ reverse . takeWhile (\x -> x /= '/') . reverse $ p
-                bkid <- newId "book"
-                pags <- filter isImage <$> listDirectory path
-                return (bkid, C.fromString name, map C.fromString pags)
 
 scanBooks path = do
-    bookPaths <- liftIO $ findLeafDirectories path
-    mapM_ createBook bookPaths
+    books <- findBooks path
+    mapM_ createBook books
 
 getBook bookId = do
     name <- getAttr bookId "name"
