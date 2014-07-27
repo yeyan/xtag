@@ -13,3 +13,4 @@ bin*
 cabal.sandbox*
 .cabal*
 bin/convert
+src/convert
