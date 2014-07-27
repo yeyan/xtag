@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Model.Type where
+module XTag.Model.Type where
 
 import           Data.Aeson
 import qualified Data.ByteString.UTF8 as C

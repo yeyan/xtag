@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 
-module Model.Book
+module XTag.Model.Book
     ( Book(..)
     , scanBooks
     , getBookIndex
@@ -32,8 +32,8 @@ import qualified Data.ByteString.UTF8   as C
 import qualified Data.Pool              as P
 import           Database.Redis.Simple
 
-import           Model.Type
-import           Model.Util
+import           XTag.Model.Type
+import           XTag.Model.Util
 
 runTest action = do
     conn <- connect defaultConnectInfo

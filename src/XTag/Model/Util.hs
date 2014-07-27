@@ -1,4 +1,4 @@
-module Model.Util
+module XTag.Model.Util
     ( createThumbnail
     , findBooks
     ) where

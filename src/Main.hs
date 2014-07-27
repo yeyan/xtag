@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
+import           Control.Applicative
 import           Data.Aeson                           hiding (json)
 import           Data.String
 
@@ -10,38 +12,66 @@ import qualified Data.Text.Encoding                   as E
 import qualified Data.Text.Lazy                       as T
 import           Text.Read                            (readMaybe)
 
+import           Control.Lens
+import           Data.Maybe
+import           System.Environment.FindBin
+import           XTag.Config
+
 import           Control.Monad.Reader
-import           Model.Book
+import           XTag.Model.Book
 
 import           Network.HTTP.Types
 import           Network.Wai.Middleware.RequestLogger
 import           Network.Wai.Middleware.Static
 import           Web.Scotty.Trans
 
-type XTagScottyM = ScottyT T.Text (ReaderT Connection IO)
-type XTagActionM = ActionT T.Text (ReaderT Connection IO)
+data AppData = AppData
+    { _appConfig  :: Config
+    , _connection :: Connection
+    }
 
-type Port = Int
+makeLenses ''AppData
 
-runScotty :: Port -> Connection -> XTagScottyM () -> IO ()
-runScotty port pool = scottyT port initApp runM
+type XTagScottyM = ScottyT T.Text (ReaderT AppData IO)
+type XTagActionM = ActionT T.Text (ReaderT AppData IO)
+
+runScotty :: AppData -> XTagScottyM () -> IO ()
+runScotty appData = do
+    scottyT (appData ^. appConfig . configPort) initApp runM
     where
-        runM :: ReaderT Connection IO a -> IO a
-        runM m = runReaderT m pool
+        runM :: ReaderT AppData IO a -> IO a
+        runM m = runReaderT m appData
 
         initApp m = runM $ do
-            conn <- ask
-            rslt <- liftIO $ runRedis conn $ scanBooks "../data"
-            liftIO $ print rslt
+            appData <- ask
+            let conn  = appData ^. connection
+                repos = appData ^. appConfig . configRepos
+            result <- liftIO $ runRedis conn $ mapM doScan repos
+            liftIO $ print result
             m
+
+        doScan path = do
+            liftIO $ putStrLn $ "Scanning repository " ++ path
+            scanBooks path
 
 runDB :: Redis a -> XTagActionM a
 runDB m = do
-    pool <- lift ask
-    rslt <- liftIO $ runRedis pool m
+    app  <- lift ask
+    rslt <- liftIO $ runRedis (app ^. connection) m
     case rslt of
         Left _ -> raise "backend error"
         Right value -> return value
+
+loadConfig file = do
+    result <- readConfig file
+    let errMsg = result ^. _1 . _Left
+    when (not $ null errMsg) $
+        putStrLn $ "Warning: " ++ errMsg
+    return $ result ^. _2
+
+main = do
+    appData <- AppData <$> loadConfig "../xtag.config" <*> connect defaultConnectInfo
+    runScotty appData app
 
 app :: XTagScottyM ()
 app = do
@@ -93,7 +123,3 @@ app = do
         resp404 = do
             status status404
             text "Resource not found"
-
-main = do
-    pool <- connect defaultConnectInfo
-    runScotty 3000 pool app
