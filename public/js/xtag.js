@@ -202,7 +202,8 @@ $(function() {
                 delta = e.shiftKey ? -10 : -1;
                 break;
             case 32:
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+                if ((window.innerHeight + window.scrollY) 
+                        >= document.body.offsetHeight - 20) {
                     delta = 1;
                     e.preventDefault();
                 }

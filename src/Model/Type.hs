@@ -32,3 +32,4 @@ instance ToJSON Book where
 instance ToJSON BookIndex where
     toJSON (BookIndex index total books) =
         object ["index" .= index, "total" .= total, "items" .= books]
+
