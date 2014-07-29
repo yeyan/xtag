@@ -37,7 +37,7 @@ type XTagActionM = ActionT T.Text (ReaderT AppData IO)
 
 runScotty :: AppData -> XTagScottyM () -> IO ()
 runScotty appData = do
-    scottyT (appData ^. appConfig . configPort) initApp runM
+    scottyT (appData ^. appConfig . port) initApp runM
     where
         runM :: ReaderT AppData IO a -> IO a
         runM m = runReaderT m appData
@@ -45,7 +45,7 @@ runScotty appData = do
         initApp m = runM $ do
             appData <- ask
             let conn  = appData ^. connection
-                repos = appData ^. appConfig . configRepos
+                repos = appData ^. appConfig . repositories
             result <- liftIO $ runRedis conn $ mapM doScan repos
             liftIO $ print result
             m
@@ -70,7 +70,9 @@ loadConfig file = do
     return $ result ^. _2
 
 main = do
-    appData <- AppData <$> loadConfig "../xtag.config" <*> connect defaultConnectInfo
+    config <- loadConfig "../xtag.config"
+    conn   <- connect $ config ^. redisConnectInfo
+    let appData = AppData config conn
     runScotty appData app
 
 app :: XTagScottyM ()
