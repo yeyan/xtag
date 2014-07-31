@@ -25,7 +25,8 @@ import           Text.Parsec.Error
 import qualified Data.ByteString.UTF8       as U
 import           Database.Redis.Simple      (ConnectInfo (..), PortID (..),
                                              defaultConnectInfo)
---import           Network.Socket             (PortNumber (..))
+
+import           Data.List                  (unlines)
 
 type Port = Int
 
@@ -55,7 +56,7 @@ readConfig file = do
         then do
             result <- flip runStateT defaultConfig $ runEitherT $ do
                 result <- EitherT $ liftIO $ parseConfig file
-                let repos = result ^. at "gallery_repositories"
+                let repos = result ^. at "repositories"
                     val x = read . head <$> result ^. at x
                     portN = val "server_port"
                     cache = val "thumbnail_cache_root"
