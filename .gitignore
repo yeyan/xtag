@@ -10,6 +10,7 @@ bower_components*
 main
 dist*
 bin*
+xtag.config
 cabal.sandbox*
 .cabal*
 bin/convert
